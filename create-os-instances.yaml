@@ -1,0 +1,109 @@
+- name: "Setup project security groups"
+  os_security_group:
+    cloud: rdocloud
+    name: openshifts
+    description: security groups for the openshift servers
+
+- os_security_group_rule: cloud=rdocloud security_group=openshifts protocol=tcp
+                          port_range_min="{{ item }}" port_range_max="{{ item }}"
+  with_items:
+    - 80
+    - 443
+    - 22
+    - 8443
+
+
+- os_security_group_rule: cloud=rdocloud security_group=openshifts direction=egress
+
+- name: "Create openshift instances"
+  os_server:
+    cloud: rdocloud
+    name: "openshift1"
+    image: CentOS-7-x86_64-GenericCloud-1804_02
+    security_groups:
+      - openshifts
+    flavor:	m1.xlarge
+    key_name: mbp-ajo
+    auto_ip: yes
+    nics:
+      - net-name: "private1"
+  register: openshift1
+
+- name: "Create openshift instances"
+  os_server:
+    cloud: rdocloud
+    name: "openshift2"
+    image: CentOS-7-x86_64-GenericCloud-1804_02
+    security_groups:
+      - openshifts
+    flavor: m1.xlarge
+    key_name: mbp-ajo
+    auto_ip: yes
+    nics:
+      - net-name: "private2"
+  register: openshift2
+
+- add_host:
+    name: openshift1
+    groups: openshift
+    ansible_host: "{{ openshift1.server.public_v4 }}"
+    ansible_user: centos
+    ansible_become: true
+    # ansible_ssh_private_key_file: id_rsa
+    host_key_checking: false
+
+- add_host:
+    name: openshift2
+    groups: openshift
+    ansible_host: "{{ openshift2.server.public_v4 }}"
+    ansible_user: centos
+    ansible_become: true
+    # ansible_ssh_private_key_file: id_rsa
+    host_key_checking: false
+
+
+- name: "Create fedhost instance"
+  os_server:
+    cloud: rdocloud
+    name: "fedhost"
+    image: CentOS-7-x86_64-GenericCloud-1804_02
+    security_groups:
+      - openshifts
+    flavor: m1.large
+    key_name: mbp-ajo
+    auto_ip: yes
+    nics:
+      - net-name: "private3"
+  register: fedhost
+
+
+- add_host:
+    name: fedhost
+    groups: fedhosts
+    ansible_host: "{{ fedhost.server.public_v4 }}"
+    ansible_user: centos
+    ansible_become: true
+    # ansible_ssh_private_key_file: id_rsa
+    host_key_checking: false
+
+
+- name: waiting for server to come up
+  local_action: wait_for host="{{ openshift1.server.public_v4 }}"
+            port=22
+            state=started
+            delay=2
+            timeout=300
+
+- name: waiting for server to come up
+  local_action: wait_for host="{{ openshift2.server.public_v4 }}"
+            port=22
+            state=started
+            delay=2
+            timeout=300
+
+- name: waiting for server to come up
+  local_action: wait_for host="{{ fedhost.server.public_v4 }}"
+            port=22
+            state=started
+            delay=2
+            timeout=300

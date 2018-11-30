@@ -1,0 +1,31 @@
+---
+- name: Create networks
+  os_network:
+    name: "{{ item }}"
+    cloud: rdocloud
+  with_items:
+    - private1
+    - private2
+    - private3
+
+- name: Create subnets
+  os_subnet:
+    name: "{{ item.name }}"
+    network_name: "{{ item.name }}"
+    cidr: "{{ item.cidr }}"
+    cloud: rdocloud
+  with_items:
+     - { name: 'private1', cidr: '192.168.144.0/24'}
+     - { name: 'private2', cidr: '192.168.33.0/24'}
+     - { name: 'private3', cidr: '192.168.20.0/24'}
+
+- name: Create routers
+  os_router:
+    name: "{{ item.name }}"
+    network: 38.145.32.0/22
+    interfaces:
+      - "{{ item.network }}"
+  with_items:
+    - { name: 'router1', network: 'private1' }
+    - { name: 'router2', network: 'private2' }
+    - { name: 'router3', network: 'private3' }

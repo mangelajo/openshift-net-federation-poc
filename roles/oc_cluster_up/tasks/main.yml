@@ -1,0 +1,11 @@
+---
+- name: Deploy openshift cluster
+  shell: |
+    oc cluster up --public-hostname={{ ansible_host }}.xip.io \
+                  --routing-suffix={{ ansible_host }}.xip.io \
+                  --base-dir=/openshift3 >> /root/oc_cluster_up.log 2>&1
+  args:
+    creates: /openshift3
+
+- name: Output
+  debug: msg="Your cluster is at https://{{ ansible_host }}.xip.io:8443/console/"

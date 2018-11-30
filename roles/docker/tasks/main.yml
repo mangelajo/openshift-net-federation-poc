@@ -1,0 +1,11 @@
+---
+- name: Install docker
+  yum: name=docker state=present
+
+- name: Add insecure registries
+  lineinfile:
+    path: /etc/sysconfig/docker
+    line: 'REGISTRIES="--insecure-registry 172.30.0.0/16 --insecure-registry 192.168.0.0/16"'
+
+- name: Enable docker service
+  service: name=docker state=started enabled=yes
