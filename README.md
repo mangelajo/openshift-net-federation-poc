@@ -27,7 +27,8 @@ static inventory from "inventory" file will be used.
 
 ## pre-setup
 
-  Copy cloud.yml.example to cloud.yml and edit your credentials to your cloud.
+* Copy cloud.yml.example to cloud.yml and edit your credentials to your cloud.
+* Edit inventory file and set 'ssh_key' to the right value
 
 ## setup
 

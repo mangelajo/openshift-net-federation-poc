@@ -12,98 +12,56 @@
     - 22
     - 8443
 
-
 - os_security_group_rule: cloud=rdocloud security_group=openshifts direction=egress
 
-- name: "Create openshift instances"
+- name: "Create instances"
   os_server:
     cloud: rdocloud
-    name: "openshift1"
+    name: '{{ item.host }}'
     image: CentOS-7-x86_64-GenericCloud-1804_02
     security_groups:
       - openshifts
-    flavor:	m1.xlarge
-    key_name: mbp-ajo
+    flavor: "{{ item.flavor }}"
+    key_name: "{{ ssh_key }}"
     auto_ip: yes
     nics:
-      - net-name: "private1"
-  register: openshift1
+      - net-name: "{{ item.net }}"
+  register: os_hosts
+  with_items:
+      - { host: 'openshift1', flavor: 'm1.xlarge', net: 'private1' }
+      - { host: 'openshift2', flavor: 'm1.xlarge', net: 'private2' }
+      - { host: 'fedhost',    flavor: 'm1.large',  net: 'private3' }
 
-- name: "Create openshift instances"
-  os_server:
-    cloud: rdocloud
-    name: "openshift2"
-    image: CentOS-7-x86_64-GenericCloud-1804_02
-    security_groups:
-      - openshifts
-    flavor: m1.xlarge
-    key_name: mbp-ajo
-    auto_ip: yes
-    nics:
-      - net-name: "private2"
-  register: openshift2
+- set_fact:
+    hosts:
+      - { host: 'openshift1', group: 'openshift', ip: '{{ os_hosts.results[0].server.public_v4 }}' }
+      - { host: 'openshift2', group: 'openshift', ip: '{{ os_hosts.results[1].server.public_v4 }}' }
+      - { host: 'fedhost',    group: 'fedhosts',  ip: '{{ os_hosts.results[2].server.public_v4 }}' }
 
-- add_host:
-    name: openshift1
-    groups: openshift
-    ansible_host: "{{ openshift1.server.public_v4 }}"
+- name: Add hosts to the runtime inventory
+  add_host:
+    name: '{{ item.host }}'
+    groups: '{{ item.group }}'
+    ansible_host: "{{ item.ip }}"
     ansible_user: centos
     ansible_become: true
     # ansible_ssh_private_key_file: id_rsa
     host_key_checking: false
-
-- add_host:
-    name: openshift2
-    groups: openshift
-    ansible_host: "{{ openshift2.server.public_v4 }}"
-    ansible_user: centos
-    ansible_become: true
-    # ansible_ssh_private_key_file: id_rsa
-    host_key_checking: false
+  with_items: "{{ hosts }}"
 
 
-- name: "Create fedhost instance"
-  os_server:
-    cloud: rdocloud
-    name: "fedhost"
-    image: CentOS-7-x86_64-GenericCloud-1804_02
-    security_groups:
-      - openshifts
-    flavor: m1.large
-    key_name: mbp-ajo
-    auto_ip: yes
-    nics:
-      - net-name: "private3"
-  register: fedhost
-
-
-- add_host:
-    name: fedhost
-    groups: fedhosts
-    ansible_host: "{{ fedhost.server.public_v4 }}"
-    ansible_user: centos
-    ansible_become: true
-    # ansible_ssh_private_key_file: id_rsa
-    host_key_checking: false
-
+- name: update static inventory
+  local_action:
+    module: lineinfile
+    path: ./inventory
+    regexp: '^{{ item.host }}\s'
+    line: '{{ item.host }} ansible_ssh_host={{ item.ip  }} ansible_ssh_user=centos ansible_become=true'
+  with_items: "{{ hosts }}"
 
 - name: waiting for server to come up
-  local_action: wait_for host="{{ openshift1.server.public_v4 }}"
+  local_action: wait_for host="{{ item.ip }}"
             port=22
             state=started
             delay=2
             timeout=300
-
-- name: waiting for server to come up
-  local_action: wait_for host="{{ openshift2.server.public_v4 }}"
-            port=22
-            state=started
-            delay=2
-            timeout=300
-
-- name: waiting for server to come up
-  local_action: wait_for host="{{ fedhost.server.public_v4 }}"
-            port=22
-            state=started
-            delay=2
-            timeout=300
+  with_items: "{{ hosts }}"
