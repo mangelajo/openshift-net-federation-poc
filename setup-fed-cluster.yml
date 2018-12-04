@@ -19,3 +19,45 @@
     - oc_cluster_up
 
 
+- name: fetch kubeconfig files
+  hosts: openshift1 openshift2
+  tasks:
+    - name: ansible create local directory example
+      local_action:
+        module: file
+        path: creds
+        state: directory
+
+    - name: "fetch kubeconfig files"
+      fetch:
+        src: /root/.kube/config
+        dest: creds/kubeconfig-{{ inventory_hostname }}
+        flat: true
+
+- name: copy kubeconfig files to fedhost
+  hosts: fedhost
+  become: false
+
+  tasks:
+    - name: ansible create .kube config directory
+      file:
+        path: ~/.kube
+        state: directory
+
+
+    - name: "upload kubeconfig files"
+      copy:
+        src: creds/kubeconfig-openshift{{ item }}
+        dest: ~/.kube/config{{ item }}
+        mode: 0644
+      with_items:
+        - 1
+        - 2
+
+    - name: setup profile
+      lineinfile:
+        path: ~/.bashrc
+        line: 'export KUBECONFIG=~/.kube/config1:~/.kube/config2'
+
+
+

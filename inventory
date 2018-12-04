@@ -1,6 +1,8 @@
 [openshift]
 openshift1 ansible_ssh_host=38.145.34.212 ansible_ssh_user=centos ansible_become=true
 openshift2 ansible_ssh_host=38.145.35.46 ansible_ssh_user=centos ansible_become=true
+fedhost ansible_ssh_host=38.145.32.97 ansible_ssh_user=centos ansible_become=true
+
 [localhost]
 127.0.0.1
 
