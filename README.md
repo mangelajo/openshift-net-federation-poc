@@ -29,6 +29,8 @@ static inventory from "inventory" file will be used.
 
 * Copy cloud.yml.example to cloud.yml and edit your credentials to your cloud.
 * Edit inventory file and set 'ssh_key' to the right value
+* Edit ansible.cfg to point to your ssh key, if it's not the standard ~/.ssh/id_rsa or in your ssh agent
+  by setting "private_key_file = /path/to/key"
 
 ## setup
 
