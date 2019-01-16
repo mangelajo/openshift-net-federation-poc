@@ -1,0 +1,60 @@
+---
+- name: Ensure basic packages
+  yum: name=epel-release state=present
+
+- name: Ensure basic packages 2
+  yum: name="{{ item }}" state=present
+  with_items:
+      - ansible
+      - pyOpenSSL
+      - python-cryptography
+      - python-lxml
+      - git
+      - NetworkManager
+
+- name: Enable networkmanager
+  service: name=NetworkManager state=started enabled=true
+
+- name: Add hostname to hosts (workaround for rdocloud)
+  shell: |
+      if ! grep $(hostname -f) /etc/hosts;
+      then
+         IP=$(ip a | grep inet | awk ' /eth0/ { print $2 } ' | cut -d/ -f1)
+         echo $IP $(hostname -f) $(hostname -a) >> /etc/hosts
+      fi
+
+- name: Checkout openshift-ansible
+  git:
+    repo: 'https://github.com/openshift/openshift-ansible'
+    dest: /home/centos/openshift-ansible
+    version: release-3.10
+
+- name: Do our ansible-in-ansible
+  shell: |
+    set -x
+    set -e
+    exec >/home/centos/openshift-ansible.log 2>&1
+    cd /home/centos/openshift-ansible
+    DOM={{ ansible_host }}.xip.io
+    URL=https://$DOM:8443
+    ansible-playbook -i inventory/hosts.localhost playbooks/prerequisites.yml \
+          -e openshift_master_default_subdomain=openshift.$DOM \
+          -e openshift_enable_excluders=false \
+          -e openshift_master_public_api_url=$URL \
+          -e openshift_master_public_console_url=$URL \
+          -e openshift_public_hostname=$DOM \
+          -e openshift_public_ip={{ ansible_host }} \
+          -e openshift_web_console_install=false
+
+    ansible-playbook -i inventory/hosts.localhost playbooks/deploy_cluster.yml \
+          -e openshift_master_default_subdomain=openshift.$DOM \
+          -e openshift_enable_excluders=false \
+          -e openshift_master_public_api_url=$URL \
+          -e openshift_master_public_console_url=$URL \
+          -e openshift_public_hostname=$DOM \
+          -e openshift_public_ip={{ ansible_host }} \
+          -e openshift_web_console_install=false
+
+
+- name: Output
+  debug: msg="Your cluster is at https://{{ ansible_host }}.xip.io:8443/console/"

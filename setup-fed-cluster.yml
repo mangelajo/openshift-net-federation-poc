@@ -13,11 +13,10 @@
     - docker
     - oc_client
 
-- name: setup openshift
+- name: setup openshift (ansible)
   hosts: openshift1 openshift2
   roles:
-    - oc_cluster_up
-
+    - openshift_ansible_aio
 
 - name: fetch kubeconfig files
   hosts: openshift1 openshift2
